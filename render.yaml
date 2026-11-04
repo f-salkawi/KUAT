@@ -5,14 +5,15 @@
 #
 # Free plan notes: the service sleeps after 15 minutes idle (the first visit then takes
 # about a minute), and the SQLite demo database starts empty after each sleep or deploy.
-# uv is installed in the build because Render only adds it when uv.lock is at the repo root.
+# uv is installed in the build because Render only adds it when uv.lock is at the repo root,
+# and it is run as "python -m uv" so Render's own uv placeholder on the PATH is never used.
 
 services:
   - type: web
     name: kuat-salkawi
     runtime: python
     plan: free
-    buildCommand: pip install --quiet uv && cd frontend && npm ci && npm run build && cd ../backend && uv sync --frozen --no-dev
+    buildCommand: pip install --quiet uv && cd frontend && npm ci && npm run build && cd ../backend && python -m uv sync --frozen --no-dev
     startCommand: cd backend && .venv/bin/uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /api/health
     envVars:
