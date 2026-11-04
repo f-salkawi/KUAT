@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>A · Midnight Glow</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0}
+body{background:#05060a;color:#e8ecff;font-family:Inter,sans-serif;min-height:100vh;overflow-x:hidden}
+.bg{position:fixed;inset:0;z-index:0;background:radial-gradient(600px 400px at 15% 10%,rgba(47,91,255,.35),transparent 70%),radial-gradient(500px 400px at 85% 30%,rgba(0,220,200,.18),transparent 70%),radial-gradient(700px 500px at 50% 110%,rgba(120,80,255,.25),transparent 70%)}
+.grid{position:fixed;inset:0;z-index:0;background-image:linear-gradient(rgba(255,255,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.04) 1px,transparent 1px);background-size:44px 44px;mask-image:radial-gradient(circle at 50% 30%,#000,transparent 75%)}
+main{position:relative;z-index:1;max-width:1180px;margin:0 auto;padding:28px 24px 60px}
+nav{display:flex;align-items:center;gap:12px}
+.logo{width:38px;height:38px;border-radius:12px;background:#0d1020;border:1px solid rgba(255,255,255,.12);display:grid;place-items:center;box-shadow:0 0 24px rgba(47,91,255,.5)}
+.logo img{width:30px;height:30px;border-radius:9px}
+nav b{font-size:18px;letter-spacing:.5px}
+.pill{margin-left:auto;font:600 12px 'JetBrains Mono';padding:7px 12px;border-radius:99px;background:rgba(0,220,170,.1);color:#4dffd2;border:1px solid rgba(0,220,170,.35)}
+.pill i{display:inline-block;width:7px;height:7px;border-radius:50%;background:#4dffd2;margin-right:7px;box-shadow:0 0 10px #4dffd2;animation:blink 1.4s infinite}
+h1{font-size:64px;line-height:1.02;font-weight:800;letter-spacing:-2px;margin:56px 0 14px;text-align:center}
+h1 span{background:linear-gradient(90deg,#7aa2ff,#4dffd2,#b388ff);-webkit-background-clip:text;color:transparent}
+.sub{text-align:center;color:#9aa3c7;font-size:18px}
+.cta{display:flex;justify-content:center;gap:12px;margin:26px 0 46px}
+.btn{padding:14px 22px;border-radius:14px;font-weight:700;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);color:#fff}
+.btn.p{background:linear-gradient(135deg,#2f5bff,#6b4dff);border:0;box-shadow:0 10px 40px rgba(47,91,255,.55)}
+.stage{display:grid;gap:14px}
+.layer{border-radius:22px;padding:20px 22px;background:rgba(14,17,32,.65);border:1px solid rgba(255,255,255,.09);backdrop-filter:blur(14px);position:relative}
+.layer h3{font:600 12px 'JetBrains Mono';letter-spacing:2px;color:#7f89b3;margin-bottom:12px}
+.row{display:flex;gap:12px;flex-wrap:wrap}
+.chip{padding:10px 14px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);font-size:14px}
+.agents{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+.agent{border-radius:16px;padding:14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);transition:.3s}
+.agent b{display:block;font-size:14px}.agent small{color:#8790b8;font-size:12px}
+.agent.on{border-color:#4d7bff;box-shadow:0 0 0 1px #4d7bff,0 0 30px rgba(77,123,255,.45);background:rgba(47,91,255,.12)}
+.feed{font:13px/1.7 'JetBrains Mono';color:#b9c2ea;margin-top:14px;min-height:66px}
+.feed em{color:#4dffd2;font-style:normal}
+.ring{width:110px;height:110px;border-radius:50%;background:conic-gradient(#4dffd2 0 62%,rgba(255,255,255,.08) 0);display:grid;place-items:center;box-shadow:0 0 40px rgba(77,255,210,.25)}
+.ring div{width:88px;height:88px;border-radius:50%;background:#0b0e1c;display:grid;place-items:center;font-size:30px;font-weight:800}
+.heat{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;flex:1}
+.h{border-radius:12px;padding:12px;font-size:13px;font-weight:600}
+@keyframes blink{50%{opacity:.3}}
+</style></head><body><div class="bg"></div><div class="grid"></div>
+<main>
+<nav><div class="logo"><img src="../../frontend/public/knight.png" alt=""></div><b>KUAT</b><span class="pill"><i></i>5 agents online</span></nav>
+<h1>UAT feedback,<br><span>untangled by agents.</span></h1>
+<p class="sub">Testers say anything. Agents investigate. You approve every bug.</p>
+<div class="cta"><span class="btn p">Play the demo</span><span class="btn">Try it yourself</span></div>
+<div class="stage">
+ <div class="layer"><h3>01 · TESTER</h3><div class="row"><span class="chip">"Didn't work"</span><span class="chip">Apply code × 5 in 1.2 s</span><span class="chip">الرمز البريدي لا يعمل</span></div></div>
+ <div class="layer"><h3>02 · AGENT TEAM</h3>
+  <div class="agents" id="ag"><div class="agent"><b>Translator</b><small>any language</small></div><div class="agent"><b>Detective</b><small>reads the clicks</small></div><div class="agent"><b>Spotter</b><small>stacks duplicates</small></div><div class="agent"><b>Writer</b><small>drafts the ticket</small></div><div class="agent"><b>Mechanic</b><small>suggests the fix</small></div></div>
+  <div class="feed" id="feed"></div></div>
+ <div class="layer"><h3>03 · YOU DECIDE</h3><div class="row" style="align-items:center;gap:22px"><div class="ring"><div>62</div></div>
+  <div class="heat"><div class="h" style="background:rgba(77,255,160,.15);color:#7dffb8">Add item<br>Clear</div><div class="h" style="background:rgba(255,200,60,.15);color:#ffd36b">Basket<br>Mild</div><div class="h" style="background:rgba(255,140,60,.18);color:#ffad73">Delivery<br>Warm</div><div class="h" style="background:rgba(255,70,90,.2);color:#ff7d8e">Pay<br>Hot</div><div class="h" style="background:rgba(77,255,160,.15);color:#7dffb8">Receipt<br>Clear</div></div></div></div>
+</div></main>
+<script>
+const lines=["<em>Detective</em> 'Apply code' clicked 5 times, nothing happened","<em>Spotter</em> Stacked onto #1 (91% match) · 3 reports","<em>Writer</em> Drafted ticket “Apply code button does nothing”","<em>Mechanic</em> Handler returns early, coupon never read","<em>Translator</em> Arabic → “The postcode doesn't work”"];
+let i=0;const ag=[...document.querySelectorAll('.agent')],f=document.getElementById('feed');
+setInterval(()=>{ag.forEach(a=>a.classList.remove('on'));ag[[1,2,3,4,0][i%5]].classList.add('on');f.innerHTML=lines.slice(Math.max(0,i-2),i+1).join('<br>');i=(i+1)%lines.length},1300);
+</script></body></html>

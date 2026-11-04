@@ -1,0 +1,17 @@
+[project]
+name = "kuat-backend"
+version = "0.1.0"
+description = "KUAT (Knight UAT): AI-assisted user acceptance testing triage with a human in control"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "httpx>=0.27",
+]
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

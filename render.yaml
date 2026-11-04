@@ -1,0 +1,23 @@
+# KUAT on Render's free plan (no payment method needed). One web service: the build compiles
+# the React app, then FastAPI serves it and the API from the same address, so there is no
+# CORS to configure. The Groq key is typed into the Render dashboard (sync: false) and is
+# never stored here. Without it, every agent runs in rules mode and says so.
+#
+# Free plan notes: the service sleeps after 15 minutes idle (the first visit then takes
+# about a minute), and the SQLite demo database starts empty after each sleep or deploy.
+
+services:
+  - type: web
+    name: kuat-salkawi
+    runtime: python
+    plan: free
+    buildCommand: cd frontend && npm ci && npm run build && cd ../backend && uv sync --frozen --no-dev
+    startCommand: cd backend && .venv/bin/uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.14.3
+      - key: NODE_VERSION # Vite 8 needs Node 20.19+ or 22.12+
+        value: "24"
+      - key: KUAT_GROQ_API_KEY
+        sync: false

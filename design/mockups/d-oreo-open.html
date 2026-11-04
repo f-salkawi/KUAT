@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>KUAT · Oreo open</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0f0b09;--choc:#2a1e19;--ridge:#140e0c;--cream:#f2ebdd;--cream2:#e6dcc8;--ink:#1d1411;--muted:#a8998a;--blue:#2d63e6}
+*{box-sizing:border-box;margin:0}
+body{background:radial-gradient(900px 500px at 50% -10%,#2a1c16 0,var(--bg) 70%);color:var(--cream);font-family:Inter,sans-serif;min-height:100vh}
+nav{max-width:1000px;margin:0 auto;padding:22px 24px;display:flex;align-items:center;gap:12px}
+.mk{width:38px;height:38px;border-radius:50%;background:var(--choc);display:grid;place-items:center;font-size:17px;box-shadow:inset 0 0 0 2px #3a2a23}
+nav b{font:700 20px Fraunces;letter-spacing:.5px}
+.live{margin-left:auto;font:500 12px 'JetBrains Mono';color:var(--muted)}
+.live i{display:inline-block;width:7px;height:7px;border-radius:50%;background:#5fd38d;margin-right:8px;animation:pulse 1.6s infinite}
+
+.stage{position:relative;max-width:900px;height:740px;margin:0 auto 60px}
+header{position:absolute;top:10px;left:0;right:0;text-align:center;transition:opacity .45s ease,transform .6s cubic-bezier(.2,.7,.2,1)}
+h1{font:500 58px/1.02 Fraunces;letter-spacing:-1.5px}
+h1 em{color:var(--cream2)}
+.sub{color:var(--muted);margin-top:14px;font-size:17px}
+.hint{position:absolute;top:560px;left:0;right:0;text-align:center;color:var(--muted);font-size:14px;transition:opacity .3s}
+.hint b{color:var(--cream)}
+.open header,.open .hint{opacity:0;transform:translateY(-24px);pointer-events:none}
+.closed header,.closed .hint{transition-delay:.85s}
+
+.layer{position:absolute;left:0;width:100%;border-radius:26px;overflow:hidden;transform-origin:50% 50%;will-change:transform;backface-visibility:hidden}
+#top{top:0;height:190px;z-index:3}
+#mid{top:204px;height:300px;z-index:2}
+#bot{top:518px;height:200px;z-index:1}
+.biscuit{background:var(--choc);color:var(--cream)}
+.cream{background:var(--cream);color:var(--ink)}
+.face{will-change:opacity;position:absolute;top:50%;left:50%;width:300px;height:300px;margin:-150px 0 0 -150px;border-radius:50%;pointer-events:none}
+.tex{position:absolute;inset:0;border-radius:50%;pointer-events:none;
+ background:radial-gradient(closest-side,transparent 0 60%,rgba(0,0,0,.25) 61% 63%,transparent 64% 76%,rgba(0,0,0,.25) 77% 79%,transparent 80%),radial-gradient(closest-side,var(--choc) 0 88%,transparent 89%),repeating-conic-gradient(var(--choc) 0 2.5deg,#1a1210 2.5deg 5deg)}
+.emboss{position:absolute;inset:0;display:grid;place-items:center;text-align:center;pointer-events:none}
+.emboss i{font-size:64px;color:#46342b;text-shadow:-1px -1px 0 #120c0a,1px 1px 0 #5a4337}
+.emboss span{display:block;font:700 22px Fraunces;letter-spacing:6px;color:#46342b;text-shadow:-1px -1px 0 #120c0a,1px 1px 0 #5a4337;margin-top:6px}
+.closed .layer{cursor:pointer}
+.inner{will-change:opacity;position:absolute;inset:0;padding:22px 26px;opacity:0}
+.lab{font:600 11px 'JetBrains Mono';letter-spacing:2px;text-transform:uppercase;opacity:.65;margin-bottom:14px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.quote{padding:10px 14px;border-radius:12px;border:1px solid #4a372e;background:rgba(255,255,255,.03);font-size:14px}
+.quote small{display:block;color:var(--muted);font-size:11px;margin-top:3px}
+.agents{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+.agent{border-radius:14px;padding:12px;background:#fbf7ef;border:1px solid var(--cream2);transition:background .35s,color .35s,transform .35s cubic-bezier(.2,.7,.2,1)}
+.agent i{font-size:16px;color:#8a7a6a}.agent b{display:block;font-size:14px;margin-top:6px}.agent small{color:#7d6e60;font-size:12px}
+.agent.on{background:var(--ink);color:var(--cream);border-color:var(--ink);transform:translateY(-4px)}.agent.on i{color:#7fa6ff}.agent.on small{color:var(--muted)}
+.feed{font:13px/1.75 'JetBrains Mono';color:#4d3f35;margin-top:14px}.feed b{color:var(--blue)}
+.ready{font:500 60px/1 Fraunces}.ready small{font:14px Inter;color:var(--muted)}
+.heat{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;flex:1;min-width:320px}
+.h{border-radius:12px;padding:10px 12px;font-size:13px;font-weight:600}.h small{display:block;font-weight:400;opacity:.8}
+.btn{padding:10px 16px;border-radius:12px;background:var(--blue);color:#fff;font-weight:600;font-size:14px;border:0;cursor:pointer;font-family:inherit}
+.ghost{background:transparent;border:1px solid #4a372e;color:var(--cream);position:absolute;right:26px;top:18px}
+#cookie{position:absolute;inset:0;pointer-events:none;will-change:transform}
+#cookie .layer{pointer-events:auto;touch-action:none}
+.dragging .hint{opacity:0}
+.closed #cookie .layer{cursor:grab}.dragging #cookie .layer{cursor:grabbing}
+.mouth{position:fixed;left:50%;bottom:28px;width:240px;height:150px;margin-left:-120px;z-index:20;pointer-events:none;
+ transform:translateY(160%) scale(.7);opacity:0;transition:transform .45s cubic-bezier(.2,1.3,.4,1),opacity .3s}
+.mouth.show{transform:none;opacity:1}
+.lips{position:absolute;inset:0;border-radius:50%;background:#6e2a26;box-shadow:inset 0 -10px 0 #5a211e,0 20px 50px rgba(0,0,0,.6);display:grid;place-items:center}
+.hole{width:170px;height:110px;border-radius:50%;background:#0b0504;position:relative;overflow:hidden;transform:scaleY(.18);transition:transform .18s cubic-bezier(.2,.7,.2,1);will-change:transform}
+.hole:before{content:"";position:absolute;left:12%;right:12%;top:0;height:16px;background:repeating-linear-gradient(90deg,#f2ebdd 0 18px,#d9cfbd 18px 20px);border-radius:0 0 8px 8px}
+.hole:after{content:"";position:absolute;left:25%;right:25%;bottom:-18px;height:44px;border-radius:50%;background:#a3453d}
+.mouth.chomp .hole{animation:chomp .75s cubic-bezier(.45,0,.55,1) forwards}
+@keyframes chomp{0%{transform:scaleY(1)}20%{transform:scaleY(.05)}45%{transform:scaleY(.42)}65%{transform:scaleY(.05)}85%{transform:scaleY(.28)}100%{transform:scaleY(.05)}}
+.crumb{position:fixed;left:0;top:0;border-radius:3px;z-index:31;pointer-events:none;will-change:transform}
+.end{position:fixed;inset:0;z-index:30;background:#000;display:grid;place-items:center;text-align:center;opacity:0;pointer-events:none;transition:opacity .9s ease}
+.end.show{opacity:1;pointer-events:auto}
+.end h2{font:500 72px Fraunces;color:var(--cream)}.end p{color:var(--muted);margin:12px 0 26px;font-size:18px}
+@keyframes pulse{50%{opacity:.3}}
+</style></head><body>
+<nav><div class="mk"><i class="fa-solid fa-chess-knight"></i></div><b>KUAT</b><span class="live"><i></i>5 agents ready</span></nav>
+<div class="stage closed" id="stage">
+ <header><h1>KUAT.<br><em>Developers' favourite Oreo.</em></h1><p class="sub">Twist it open: testers on top, AI agents in the cream, you decide at the bottom.</p></header>
+ <div id="cookie">
+ <div class="layer biscuit" id="top"><div class="face"><div class="tex"></div><div class="emboss"><div><i class="fa-solid fa-chess-knight"></i><span>KUAT</span></div></div></div>
+  <div class="inner"><div class="lab">Top biscuit · Testers</div>
+   <div class="row"><div class="quote">"Didn't work"<small>Dani · Basket</small></div><div class="quote">Pressed Apply code 5 times in 1.2 s<small>Rage-click detector · silent</small></div><div class="quote">الرمز البريدي لا يقبل الأحرف الصغيرة<small>Farah · Delivery</small></div></div>
+   <button class="btn ghost" id="close">Close the cookie</button></div></div>
+ <div class="layer cream" id="mid"><div class="inner"><div class="lab">The cream · Agent team</div>
+   <div class="agents"><div class="agent"><i class="fa-solid fa-language"></i><b>Translator</b><small>any language</small></div><div class="agent"><i class="fa-solid fa-magnifying-glass"></i><b>Detective</b><small>reads the clicks</small></div><div class="agent"><i class="fa-solid fa-layer-group"></i><b>Spotter</b><small>stacks duplicates</small></div><div class="agent"><i class="fa-solid fa-pen-nib"></i><b>Writer</b><small>drafts the ticket</small></div><div class="agent"><i class="fa-solid fa-wrench"></i><b>Mechanic</b><small>suggests the fix</small></div></div>
+   <div class="feed" id="feed"></div></div></div>
+ <div class="layer biscuit" id="bot"><div class="face"><div class="tex"></div></div><div class="inner"><div class="lab">Bottom biscuit · You decide</div>
+   <div class="row" style="gap:28px"><div><div class="ready">62<small> / 100 ready</small></div><button class="btn" style="margin-top:14px">Review 4 reports</button></div>
+   <div class="heat"><div class="h" style="background:#203a2c;color:#9fe0b6">Add item<small>clear</small></div><div class="h" style="background:#3d3320;color:#ecd08e">Basket<small>mild</small></div><div class="h" style="background:#46291c;color:#f2a57c">Delivery<small>warm</small></div><div class="h" style="background:#4b1d22;color:#ff8f98">Pay<small>hot</small></div><div class="h" style="background:#203a2c;color:#9fe0b6">Receipt<small>clear</small></div></div></div></div></div>
+ </div>
+ <div class="hint">Tap the cookie to <b>twist it open</b></div>
+</div>
+<div class="mouth" id="mouth"><div class="lips"><div class="hole" id="hole"></div></div></div>
+<div class="end" id="end"><div><h2>Eaten.</h2><p>Bugs: 0. Crumbs: many. See you next test cycle.</p><button class="btn" onclick="location.reload()">Bake another</button></div></div>
+<script>
+// One continuous animation per layer, transforms only (GPU), so nothing re-lays out mid-motion.
+// Each card's open position is its real CSS position; the closed cookie is a transform of it.
+const stage = document.getElementById('stage')
+const L = { top: document.getElementById('top'), mid: document.getElementById('mid'), bot: document.getElementById('bot') }
+const DISC = { top: 300, mid: 290, bot: 300 }          // cookie diameter per layer
+const CENTRE_Y = { top: 376, mid: 402, bot: 426 }      // where each disc sits when closed
+const TILT = 58, DURATION = 1400, SAMPLES = 60
+let anims = [], isOpen = false
+
+// Smooth curves, so speed never changes suddenly (a sudden change is what reads as a stutter).
+const clamp = (x) => Math.max(0, Math.min(1, x))
+const smooth = (x) => { x = clamp(x); return x * x * x * (x * (6 * x - 15) + 10) }      // smootherstep
+const bump = (x) => Math.sin(Math.PI * clamp(x)) ** 2                                   // 0 → 1 → 0, soft at both ends
+
+// p = time (0 to 1). k = how much of a cookie it still is (1 = cookie, 0 = card).
+function pose(name, p) {
+  const el = L[name], w = el.offsetWidth, h = el.offsetHeight, cardY = el.offsetTop + h / 2
+  const k = 1 - smooth((p - 0.12) / 0.88)
+  const lift = { top: -90, mid: 0, bot: 34 }[name] * bump(p / 0.75)
+  const twist = name === 'top' ? -360 * smooth(p) : 0            // twists off, keeps spinning, lands flat
+  const sx = 1 + (DISC[name] / w - 1) * k, sy = 1 + (DISC[name] / h - 1) * k
+  const dy = (CENTRE_Y[name] - cardY) * k + lift
+  const rx = 26 + (w / 2 - 26) * k, ry = 26 + (h / 2 - 26) * k
+  return {
+    transform: `translate3d(0px, ${dy}px, 0px) perspective(1000px) rotateX(${TILT * k}deg) rotateZ(${twist}deg) scale(${sx}, ${sy})`,
+    borderRadius: `${rx}px / ${ry}px`,
+    boxShadow: name === 'mid' ? 'none' : `0px ${10 * k}px 0px 0px rgba(11,7,6,${k})`,   // biscuit thickness, no blur to repaint
+  }
+}
+const frames = (name) => Array.from({ length: SAMPLES + 1 }, (_, i) => pose(name, i / SAMPLES))
+function setClosed() {
+  for (const n in L) {
+    Object.assign(L[n].style, pose(n, 0))
+    // The layer is squashed into a circle, so un-squash its face to keep the cookie in proportion.
+    const face = L[n].querySelector('.face')
+    if (face) face.style.transform = `scale(${L[n].offsetWidth / DISC[n]}, ${L[n].offsetHeight / DISC[n]})`
+  }
+}
+
+function play(forward) {
+  anims.forEach(a => a.cancel())
+  const opts = { duration: DURATION, easing: 'linear', fill: 'both', direction: forward ? 'normal' : 'reverse' }   // easing is baked into the frames
+  anims = Object.keys(L).map(n => L[n].animate(frames(n), opts))
+  const fade = (sel, show, delay) => document.querySelectorAll(sel).forEach(el =>
+    el.animate([{ opacity: show ? 0 : 1 }, { opacity: show ? 1 : 0 }], { duration: show ? 500 : 420, delay, fill: 'both', easing: 'ease-in-out' }))
+  fade('.face', !forward, forward ? 620 : DURATION - 800)
+  fade('.inner', forward, forward ? DURATION - 300 : 0)
+  stage.classList.toggle('open', forward)
+  stage.classList.toggle('closed', !forward)
+  isOpen = forward
+}
+setClosed()
+document.getElementById('close').addEventListener('click', e => { e.stopPropagation(); play(false) })
+addEventListener('resize', () => { if (!isOpen && !eating) setClosed() })
+const cookie = document.getElementById('cookie'), mouth = document.getElementById('mouth'), hole = document.getElementById('hole')
+let drag = null, eating = false
+
+function centre(el) { const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 } }
+const mouthSpot = () => ({ x: innerWidth / 2, y: innerHeight - 28 - 75 })          // where the mouth sits once shown
+let frameQueued = false
+
+stage.addEventListener('pointerdown', e => {
+  if (isOpen || eating || !e.target.closest('.layer')) return
+  drag = { x: e.clientX, y: e.clientY, dx: 0, dy: 0, moved: false, start: centre(L.mid) }
+  e.target.setPointerCapture(e.pointerId)
+})
+function gapToMouth() {
+  const m = mouthSpot()
+  return Math.hypot(drag.start.x + drag.dx - m.x, drag.start.y + drag.dy - m.y)
+}
+function render() {
+  frameQueued = false
+  if (!drag) return
+  cookie.style.transform = `translate3d(${drag.dx}px, ${drag.dy}px, 0) rotate(${drag.dx * 0.04}deg)`
+  // The mouth only comes in when the cookie heads down, and opens wider as it gets closer.
+  mouth.classList.toggle('show', drag.dy > 30)
+  hole.style.transform = `scaleY(${0.18 + 0.82 * clamp(1 - (gapToMouth() - 90) / 330)})`
+}
+addEventListener('pointermove', e => {
+  if (!drag) return
+  drag.dx = e.clientX - drag.x; drag.dy = e.clientY - drag.y
+  if (!drag.moved && Math.hypot(drag.dx, drag.dy) < 6) return
+  if (!drag.moved) { drag.moved = true; stage.classList.add('dragging'); cookie.style.transition = 'none' }
+  if (!frameQueued) { frameQueued = true; requestAnimationFrame(render) }
+})
+addEventListener('pointerup', () => {
+  if (!drag) return
+  const d = drag, gap = gapToMouth(); drag = null; stage.classList.remove('dragging')
+  if (!d.moved) { play(true); return }
+  if (mouth.classList.contains('show') && gap < 140) { eat(d); return }
+  cookie.style.transition = 'transform .6s cubic-bezier(.3,1.35,.5,1)'
+  cookie.style.transform = ''
+  mouth.classList.remove('show'); hole.style.transform = ''
+})
+
+function eat(d) {
+  eating = true
+  const c = { x: d.start.x + d.dx, y: d.start.y + d.dy }, m = mouthSpot()
+  hole.style.transform = 'scaleY(1)'
+  cookie.style.transition = 'transform .38s cubic-bezier(.55,0,.8,.2), opacity .18s .28s'
+  cookie.style.transform = `translate3d(${d.dx + m.x - c.x}px, ${d.dy + m.y - c.y}px, 0) scale(.28) rotate(${d.dx * 0.04 + 25}deg)`
+  cookie.style.opacity = '0'
+  setTimeout(() => { hole.style.transform = ''; mouth.classList.add('chomp'); crumbs(m) }, 360)
+  setTimeout(() => document.getElementById('end').classList.add('show'), 1100)
+}
+// Crumbs burst out of the mouth, arc up, fall and settle on the floor of the end screen.
+function crumbs(m) {
+  const colours = ['#8a6a57', '#6f5242', '#a5826c', '#f2ebdd', '#7c5e4c', '#e6dcc8']
+  for (let n = 0; n < 34; n++) {
+    const c = document.createElement('div'), size = 7 + Math.random() * 11
+    c.className = 'crumb'
+    Object.assign(c.style, { width: size + 'px', height: size * (0.6 + Math.random() * 0.5) + 'px', background: colours[n % colours.length] })
+    document.body.appendChild(c)
+    const x0 = m.x - 40 + Math.random() * 80, y0 = m.y - 30
+    const x1 = x0 + (Math.random() - 0.5) * 520, apex = y0 - 60 - Math.random() * 160
+    const floor = innerHeight - size - Math.random() * 6, spin = (Math.random() - 0.5) * 720
+    c.animate([
+      { transform: `translate(${x0}px, ${y0}px) rotate(0deg)`, easing: 'cubic-bezier(.2,.6,.35,1)' },
+      { transform: `translate(${(x0 + x1) / 2}px, ${apex}px) rotate(${spin / 2}deg)`, offset: 0.35, easing: 'cubic-bezier(.55,0,1,.45)' },
+      { transform: `translate(${x1}px, ${floor}px) rotate(${spin}deg)`, offset: 0.85, easing: 'ease-out' },
+      { transform: `translate(${x1}px, ${floor - 8}px) rotate(${spin}deg)`, offset: 0.93, easing: 'ease-in' },
+      { transform: `translate(${x1}px, ${floor}px) rotate(${spin}deg)` },
+    ], { duration: 1300 + Math.random() * 500, fill: 'forwards' })
+  }
+}
+</script></body></html>
