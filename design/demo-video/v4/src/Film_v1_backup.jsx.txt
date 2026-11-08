@@ -1,0 +1,660 @@
+// KUAT — the cinematic film. Every scene is timed from the narration (src/time.js) and the music's beat grid.
+import React from 'react'
+import { AbsoluteFill, Audio, Easing, Img, Sequence, getInputProps, interpolate, staticFile } from 'remotion'
+import meta from '../public/meta.json'
+import data from '../public/data.json'
+import { Backdrop, BigText, C, Captions, Click, EASE, EASE_IO, FULL, Flash, Grain, Highlight, Knight, Letterbox, MONO, SANS, SERIF, Screen,
+  SectionLabel, Sfx, Spring, Vignette, focus, ramp, useT } from './kit'
+import { END, FPS, IMPACT, LINES, MUSIC_BACK, MUSIC_BREAK, SCENE, START, f, lineEnd, word } from './time'
+
+export { FPS, END }
+const box = (shot, k) => meta.shots[shot].boxes[k]
+const shot = (n) => meta.shots[n].file
+const Seq = ({ from, to, children }) => <Sequence from={f(from)} durationInFrames={Math.max(1, f(to) - f(from))}>{children}</Sequence>
+const fix = data.issue.fix
+const READY = [data.readyBefore.score, data.readyAfter.score, data.readyAfter.launch_at]
+
+// ---------- Music: ducked under the voice, near-silent for "Not anymore.", swelling on the reveal ----------
+const SPANS = Object.keys(START).map((k) => [START[k], lineEnd(k)])
+function musicVolume(t) {
+  let base = 0.42
+  if (t >= 15.4) base = ramp(t, 15.4, 17.9, 0.42, 0.22, Easing.linear)
+  if (t >= 17.9) base = ramp(t, 17.9, 18.4, 0.22, 0.03, Easing.linear)
+  if (t >= IMPACT - 0.05) base = ramp(t, IMPACT - 0.05, IMPACT + 0.2, 0.03, 0.9, Easing.linear)
+  if (t >= 21.5) base = ramp(t, 21.5, 24, 0.9, 0.62, Easing.linear)
+  if (t >= SCENE.agentsEnd - 0.3 && t < MUSIC_BREAK) base = 0.85
+  if (t >= MUSIC_BACK - 0.05) base = ramp(t, MUSIC_BACK + 0.6, MUSIC_BACK + 1.6, 0.85, 0.66, Easing.linear)
+  const duck = Math.max(0, ...SPANS.map(([a, b]) => Math.min(ramp(t, a - 0.25, a + 0.05), ramp(t, b + 0.1, b + 0.6, 1, 0))))
+  const depth = t > MUSIC_BACK - 0.1 && t < MUSIC_BACK + 0.8 ? 0.2 : 0.52
+  return base * (1 - depth * duck) * ramp(t, END - 4.2, END - 0.3, 1, 0, Easing.linear)
+}
+
+// ---------- 0. Cold open: the mess ----------
+const HAND = word('h4', 'hand')
+const QUOTES = [
+  { at: word('h3', 'Didn'), x: 200, y: 200, rot: -5, who: 'Dani · step 2', text: '“Didn’t work.”' },
+  { at: word('h3', 'It'), x: 1140, y: 180, rot: 4, who: 'Hana · step 5', text: '“It felt weird.”' },
+  { at: word('h3', 'note'), x: 210, y: 590, rot: 3, who: 'Farah · step 3', text: data.farah.original_text, rtl: true },
+  { at: word('h3', 'nothing'), x: 700, y: 385, rot: -2, who: 'Comment', empty: true },
+]
+const CLICKS = (() => { const a = word('h3', 'Five'), c = word('h3', 'clicks'); return [a, word('h3', 'angry'), c, c + 0.24, c + 0.48] })()
+
+function shake(t) {
+  let x = 0, y = 0
+  for (const at of [...QUOTES.map((q) => q.at), CLICKS[0]]) {
+    if (t < at) continue
+    const a = 7 * Math.exp(-(t - at) * 11)
+    x += a * Math.sin((t - at) * 70 + at); y += a * Math.cos((t - at) * 63 + at * 2)
+  }
+  return [x, y]
+}
+
+const QuoteCard = ({ q }) => {
+  const t = useT()
+  if (t < q.at - 0.05) return null
+  const gone = ramp(t, HAND - 0.15, HAND + 0.55)
+  const dim = ramp(t, START.h4, START.h4 + 0.7, 1, 0.62)
+  const caret = Math.floor(t * 2.2) % 2 === 0
+  return (
+    <div style={{ position: 'absolute', left: q.x, top: q.y, opacity: (1 - gone) * dim, filter: `blur(${gone * 14}px)` }}>
+      <Spring at={q.at} style={{ transform: `rotate(${q.rot}deg)` }}>
+        <div style={{ background: C.card, color: C.ink, borderRadius: 18, padding: '22px 34px 24px', minWidth: 300, boxShadow: '0 34px 80px rgba(0,0,0,.6)' }}>
+          <div style={{ fontFamily: SANS, fontSize: 17, fontWeight: 600, color: C.mutedInk, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 10 }}>{q.who}</div>
+          {q.empty
+            ? <div style={{ width: 380, height: 64, borderRadius: 10, border: '2px solid #d8ccb6', display: 'flex', alignItems: 'center', padding: '0 16px', fontFamily: SANS, fontSize: 24, color: '#b3a693' }}>
+                <span style={{ width: 2, height: 30, background: caret ? C.ink : 'transparent', marginRight: 10 }} />No comment.
+              </div>
+            : <div dir={q.rtl ? 'rtl' : 'ltr'} style={{ fontFamily: q.rtl ? '"Geeza Pro", "Noto Naskh Arabic", Arial' : SERIF, fontStyle: q.rtl ? 'normal' : 'italic', fontSize: q.rtl ? 50 : 66, lineHeight: 1.16 }}>{q.text}</div>}
+        </div>
+      </Spring>
+    </div>
+  )
+}
+
+const FiveClicks = () => {
+  const t = useT()
+  if (t < CLICKS[0] - 0.5) return null
+  const n = CLICKS.filter((c) => t >= c).length
+  const gone = ramp(t, HAND - 0.15, HAND + 0.55)
+  const dim = ramp(t, START.h4, START.h4 + 0.7, 1, 0.62)
+  const last = CLICKS.filter((c) => t >= c).slice(-1)[0] ?? -9
+  const press = t - last < 0.1 ? 0.95 : 1
+  const pop = 1 + 0.35 * Math.exp(-(t - last) * 9)
+  return (
+    <div style={{ position: 'absolute', left: 1130, top: 590, width: 470, height: 200, opacity: ramp(t, CLICKS[0] - 0.5, CLICKS[0] - 0.15) * (1 - gone) * dim, filter: `blur(${gone * 14}px)` }}>
+      <div style={{ position: 'absolute', left: 0, top: 40, padding: '24px 38px', borderRadius: 16, background: '#fff', color: '#1d3a6e', fontFamily: SANS, fontWeight: 700, fontSize: 32,
+        boxShadow: '0 26px 60px rgba(0,0,0,.55)', transform: `scale(${press})` }}>Add medicine</div>
+      {CLICKS.map((c, i) => {
+        if (t < c) return null
+        const r = ramp(t, c, c + 0.5, 6, 70, Easing.out(Easing.cubic))
+        return <div key={i} style={{ position: 'absolute', left: 150 - r, top: 82 - r, width: r * 2, height: r * 2, borderRadius: '50%', border: `3px solid ${C.red}`, opacity: ramp(t, c, c + 0.5, 0.9, 0) }} />
+      })}
+      <svg width="34" height="34" viewBox="0 0 24 24" style={{ position: 'absolute', left: 146, top: 80, transform: `scale(${press})`, filter: 'drop-shadow(0 3px 5px rgba(0,0,0,.6))' }}>
+        <path d="M5 2.5l14 8.2-6.2 1.5-3.1 6.3z" fill="#fff" stroke="#111" strokeWidth="1.4" strokeLinejoin="round" />
+      </svg>
+      {n > 0 && <div style={{ position: 'absolute', left: 345, top: 18, fontFamily: SERIF, fontWeight: 700, fontSize: 92, color: C.red, transform: `scale(${pop})`, textShadow: '0 0 30px rgba(255,143,152,.5)' }}>×{n}</div>}
+      {CLICKS.map((c, i) => <Sfx key={i} at={c} src="audio/sfx_click.mp3" volume={0.55} dur={0.5} />)}
+    </div>
+  )
+}
+
+const Hook = () => {
+  const t = useT()
+  const [x, y] = shake(t)
+  const push = 1 + 0.05 * ramp(t, START.h3, SCENE.hookEnd, 0, 1, Easing.linear)
+  return (
+    <AbsoluteFill>
+      <BigText k="h1" size={82} until={START.h2 - 0.15} />
+      <BigText k="h2" size={82} until={START.h3 - 0.05} />
+      <AbsoluteFill style={{ transform: `translate(${x}px, ${y}px) scale(${push})` }}>
+        {QUOTES.map((q, i) => <QuoteCard key={i} q={q} />)}
+        <FiveClicks />
+      </AbsoluteFill>
+    </AbsoluteFill>
+  )
+}
+
+// ---------- 1. Reveal ----------
+const Title = () => {
+  const t = useT()
+  if (t < IMPACT) return null
+  const exit = ramp(t, SCENE.revealEnd - 0.28, SCENE.revealEnd + 0.05, 0, 1, EASE_IO)
+  const track = ramp(t, IMPACT, IMPACT + 1.4, 0.32, 0.04, EASE)
+  const sweep = ramp(t, IMPACT + 0.35, IMPACT + 1.6, -0.3, 1.3, EASE_IO)
+  const sub = ramp(t, word('r2', 'KUAT') + 0.1, word('r2', 'KUAT') + 0.6)
+  return (
+    <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'center', opacity: 1 - exit, transform: `scale(${1 + 0.35 * exit})`, filter: `blur(${exit * 10}px)` }}>
+      <Spring at={IMPACT} from={0.6}><Knight size={150} /></Spring>
+      <div style={{ marginTop: 26, fontFamily: SERIF, fontWeight: 700, fontSize: 210, lineHeight: 1, letterSpacing: `${track}em`, color: 'transparent',
+        backgroundImage: `linear-gradient(100deg, ${C.cream} ${sweep * 100 - 18}%, #fffaf0 ${sweep * 100}%, ${C.cream} ${sweep * 100 + 18}%)`, WebkitBackgroundClip: 'text', backgroundClip: 'text',
+        opacity: ramp(t, IMPACT, IMPACT + 0.25), textShadow: '0 0 60px rgba(242,235,221,.18)' }}>KUAT.</div>
+      <div style={{ marginTop: 18, fontFamily: SANS, fontWeight: 600, fontSize: 24, letterSpacing: '0.5em', color: C.muted, opacity: sub, transform: `translateY(${(1 - sub) * 10}px)` }}>KNIGHT · UAT</div>
+    </AbsoluteFill>
+  )
+}
+
+// ---------- 2. The Oreo ----------
+const LAYERS = [
+  { key: 'top', box: { x: 154, y: 78, width: 1132, height: 272 }, label: 'TESTERS', sub: 'on top', at: word('o1', 'Testers'), until: word('o1', 'AI') },
+  { key: 'cream', box: { x: 154, y: 366, width: 1132, height: 256 }, label: 'AI AGENTS', sub: 'in the cream', at: word('o1', 'AI'), until: word('o1', 'And') },
+  { key: 'bottom', box: { x: 154, y: 638, width: 1132, height: 250 }, label: 'YOU DECIDE', sub: 'at the bottom', at: word('o1', 'you'), until: SCENE.oreoEnd + 1 },
+]
+const Oreo = ({ from }) => {
+  const twistLen = 2.92 - 0.55
+  return (
+    <Screen video="clips/twist.mp4" videoFrom={0.55} holdAfter={twistLen - 0.05} holdImg="clips/twist_last.png" tilt={[5, -6]} fadeIn={0.3} push={0.01}
+      cams={[{ cx: 720, cy: 430, s: 1.12 }, { at: twistLen - 0.3, dur: 1.4, cx: 720, cy: 470, s: 0.98 }]}>
+      {LAYERS.map((l) => <OreoLabel key={l.key} l={l} from={from} />)}
+    </Screen>
+  )
+}
+const OreoLabel = ({ l, from }) => {
+  const t = useT() + from
+  if (t < l.at - 0.1) return null
+  const a = ramp(t, l.at - 0.1, l.at + 0.35)
+  const active = t < l.until ? 1 : 0.45
+  return (
+    <>
+      <Highlight box={l.box} at={l.at - from} until={l.until - from + 0.2} pad={6} radius={22} color={C.blueSoft} />
+      <div style={{ position: 'absolute', left: l.box.x + l.box.width - 330, top: l.box.y + 18, opacity: a * active, transform: `translateX(${(1 - a) * 30}px)` }}>
+        <div style={{ background: 'rgba(15,11,9,.9)', border: '1px solid rgba(242,235,221,.2)', borderRadius: 12, padding: '10px 18px', boxShadow: '0 12px 30px rgba(0,0,0,.5)' }}>
+          <div style={{ fontFamily: SANS, fontWeight: 700, fontSize: 20, letterSpacing: '.22em', color: C.cream }}>{l.label}</div>
+          <div style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 20, color: C.muted }}>{l.sub}</div>
+        </div>
+      </div>
+    </>
+  )
+}
+
+// ---------- 3. Testers ----------
+const ArabicChip = ({ at }) => {
+  const t = useT()
+  if (t < at) return null
+  const a = ramp(t, at, at + 0.5)
+  return (
+    <div style={{ position: 'absolute', right: 120, top: 300, opacity: a, transform: `translateX(${(1 - a) * 60}px)` }}>
+      <div style={{ background: C.card, color: C.ink, borderRadius: 16, padding: '18px 26px', boxShadow: '0 30px 70px rgba(0,0,0,.6)', maxWidth: 520 }}>
+        <div style={{ fontFamily: SANS, fontSize: 15, fontWeight: 700, letterSpacing: '.12em', color: C.mutedInk, marginBottom: 6 }}>FARAH · IN ARABIC</div>
+        <div dir="rtl" style={{ fontFamily: '"Geeza Pro", Arial', fontSize: 34 }}>{data.farah.original_text}</div>
+      </div>
+    </div>
+  )
+}
+
+const TRAIL = [
+  { k: 'CLICK', v: 'Cardiolex 10 mg', tone: C.cream },
+  { k: 'CLICK', v: 'Add medicine  ×5', tone: C.cream },
+  { k: 'FOUND', v: data.issue.reports[2]?.facts?.[0]?.summary || "'Add medicine' was clicked 5 times and nothing happened", tone: C.red },
+  { k: 'FOUND', v: data.issue.reports[2]?.facts?.[1]?.summary || 'Rage clicks', tone: C.red },
+]
+const Evidence = ({ from }) => {
+  const t = useT() + from
+  const at = START.t3
+  return (
+    <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ width: 1180, background: C.choc, borderRadius: 26, border: `1px solid ${C.line}`, padding: '40px 52px', boxShadow: '0 60px 140px rgba(0,0,0,.7)',
+        opacity: ramp(t, from, from + 0.35), transform: `perspective(2000px) rotateX(${8 * (1 - ramp(t, from, from + 1.2))}deg) scale(${0.94 + 0.06 * ramp(t, from, from + 0.6)})` }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 26 }}>
+          <div style={{ fontFamily: SANS, fontWeight: 700, fontSize: 18, letterSpacing: '.3em', color: C.blueSoft }}>CLICK TRAIL · ATTACHED AUTOMATICALLY</div>
+          <div style={{ fontFamily: MONO, fontSize: 18, color: C.muted }}>step 2 · Other medicines</div>
+        </div>
+        {TRAIL.map((r, i) => {
+          const a = ramp(t, at + 0.15 + i * 0.32, at + 0.5 + i * 0.32)
+          return (
+            <div key={i} style={{ display: 'flex', gap: 26, alignItems: 'baseline', padding: '14px 0', borderTop: i ? `1px solid ${C.line}` : 'none', opacity: a, transform: `translateX(${(1 - a) * -24}px)` }}>
+              <span style={{ fontFamily: MONO, fontSize: 20, color: r.tone === C.red ? C.red : C.muted, width: 90 }}>{r.k}</span>
+              <span style={{ fontFamily: r.tone === C.red ? SANS : MONO, fontSize: r.tone === C.red ? 30 : 28, fontWeight: r.tone === C.red ? 600 : 400, color: r.tone }}>{r.v}</span>
+            </div>
+          )
+        })}
+      </div>
+    </AbsoluteFill>
+  )
+}
+
+const Testers = ({ from }) => {
+  const kn = box('form', 'knight'), add = box('rage', 'add'), toast = box('rage', 'toast')
+  const tap = word('t1', 'words') + 0.1
+  const a = from, b = tap + 0.45, c = START.t2 - 0.05, d = START.t3 - 0.05
+  const k1 = word('t2', 'Kwat'), k2 = word('t2', 'clicks')
+  return (
+    <>
+      <Seq from={a} to={b}>
+        <Screen src={shot('form')} dim={0.14} sweepAt={0.2} cams={[{ ...FULL, s: 0.97 }, { at: 0.55, dur: 1.4, ...focus(kn, 0.16, 2.7) }]}>
+          <Click x={kn.x + kn.width / 2} y={kn.y + kn.height / 2} at={tap - a} />
+        </Screen>
+      </Seq>
+      <Seq from={b} to={c}>
+        <Screen src={shot('panel_home')} dim={0.12} fadeIn={0.2} tilt={[4, -6]} cams={[focus(box('panel_home', 'panel'), 0.86, 1.25, -40)]}>
+          <Highlight box={box('panel_home', 'problem')} at={0.35} until={c - b} />
+        </Screen>
+        <ArabicChip at={word('t1', 'language') - b - 0.1} />
+      </Seq>
+      <Seq from={c} to={d}>
+        <Screen src={shot('rage')} dim={0.14} fadeIn={0.25} cams={[focus(box('rage', 'card'), 0.8, 1.3), { at: 0.6, dur: 1.3, ...focus(add, 0.3, 2.5) },
+          { at: word('t2', 'files') - c - 0.35, dur: 1.0, ...focus(toast, 0.55, 1.85) }]}>
+          {[k1, k1 + 0.24, word('t2', 'rage'), word('t2', 'rage') + 0.22, k2].map((at, i) => (
+            <Click key={i} x={add.x + add.width / 2 + (i % 2) * 6} y={add.y + add.height / 2} at={at - c} from={i ? [0, 0] : [80, 60]} />
+          ))}
+          <Highlight box={toast} at={word('t2', 'files') - c + 0.5} until={d - c} color={C.red} />
+        </Screen>
+      </Seq>
+      <Seq from={d} to={SCENE.testersEnd}><Evidence from={d} /></Seq>
+      <Sfx at={from - 1.06} src="audio/sfx_whoosh.mp3" volume={0.35} dur={1.5} />
+    </>
+  )
+}
+
+// ---------- 4. Agents ----------
+const AGENTS = [
+  { name: 'Translator', job: 'any language → clear English', at: word('a2', 'Translate') },
+  { name: 'Detective', job: 'reads the clicks, asks if vague', at: word('a2', 'Investigate') },
+  { name: 'Spotter', job: 'stacks duplicates', at: word('a3', 'Stack') },
+  { name: 'Writer', job: 'drafts the ticket', at: word('a3', 'Write') },
+  { name: 'Mechanic', job: 'reads the code', at: word('a3', 'Read') },
+]
+const stage = (t, a, b) => Math.min(ramp(t, a, a + 0.3), ramp(t, b - 0.22, b, 1, 0))
+
+const AgentBoard = ({ from }) => {
+  const t = useT() + from
+  const ask = word('a2', 'Ask')
+  const STAGES = [
+    [AGENTS[0].at, AGENTS[1].at, <Translate key="tr" t={t} at={AGENTS[0].at} />],
+    [AGENTS[1].at, ask, <Investigate key="in" t={t} at={AGENTS[1].at} />],
+    [ask, AGENTS[2].at, <Question key="q" t={t} at={ask} />],
+    [AGENTS[2].at, AGENTS[3].at, <Stack key="st" t={t} at={AGENTS[2].at} />],
+    [AGENTS[3].at, AGENTS[4].at, <Write key="wr" t={t} at={AGENTS[3].at} />],
+    [AGENTS[4].at, SCENE.agentsEnd + 0.3, <Mechanic key="me" t={t} at={AGENTS[4].at} />],
+  ]
+  const enter = ramp(t, from, from + 0.5)
+  return (
+    <AbsoluteFill style={{ opacity: enter }}>
+      <div style={{ position: 'absolute', left: 170, right: 170, top: 150, height: 560, background: `linear-gradient(180deg, ${C.choc2}, ${C.choc})`, borderRadius: 28,
+        border: `1px solid ${C.line}`, boxShadow: '0 70px 150px rgba(0,0,0,.7)', overflow: 'hidden' }}>
+        {STAGES.map(([a, b, el]) => { const o = stage(t, a, b); return o > 0 ? <div key={a} style={{ position: 'absolute', inset: 0, opacity: o, transform: `scale(${0.97 + 0.03 * o})` }}>{el}</div> : null })}
+      </div>
+      <div style={{ position: 'absolute', left: 170, right: 170, top: 760, display: 'flex', gap: 22 }}>
+        {AGENTS.map((g, i) => {
+          const next = AGENTS[i + 1]?.at ?? 99
+          const on = t >= g.at - 0.05 && t < next - 0.05
+          const seen = t >= g.at
+          const lit = ramp(t, g.at - 0.05, g.at + 0.25)
+          return (
+            <div key={g.name} style={{ flex: 1, borderRadius: 18, padding: '18px 22px', background: on ? C.cream : 'rgba(42,30,25,.85)', border: `1px solid ${on ? C.cream : C.line}`,
+              boxShadow: on ? '0 0 60px rgba(242,235,221,.25)' : 'none', opacity: seen ? 1 : 0.45, transform: `translateY(${on ? -8 * lit : 0}px)` }}>
+              <div style={{ fontFamily: MONO, fontSize: 15, color: on ? C.mutedInk : C.muted }}>0{i + 1}</div>
+              <div style={{ fontFamily: SERIF, fontWeight: 700, fontSize: 32, color: on ? C.ink : C.cream }}>{g.name}</div>
+              <div style={{ fontFamily: SANS, fontSize: 17, color: on ? C.mutedInk : C.muted }}>{g.job}</div>
+            </div>
+          )
+        })}
+      </div>
+    </AbsoluteFill>
+  )
+}
+const Center = ({ children, gap = 26 }) => <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap, padding: 60 }}>{children}</div>
+const Translate = ({ t, at }) => {
+  const m = ramp(t, at + 0.15, at + 0.65, 0, 1, EASE_IO)
+  return (
+    <Center gap={10}>
+      <div style={{ fontFamily: SANS, fontWeight: 700, fontSize: 17, letterSpacing: '.3em', color: C.blueSoft }}>FARAH’S REPORT</div>
+      <div style={{ position: 'relative', height: 150, width: 1400, display: 'grid', placeItems: 'center' }}>
+        <div dir="rtl" style={{ position: 'absolute', fontFamily: '"Geeza Pro", Arial', fontSize: 66, color: C.cream, opacity: 1 - m, filter: `blur(${m * 12}px)`, transform: `translateY(${-m * 30}px)` }}>{data.farah.original_text}</div>
+        <div style={{ position: 'absolute', fontFamily: SERIF, fontSize: 60, color: C.cream, opacity: m, filter: `blur(${(1 - m) * 12}px)`, transform: `translateY(${(1 - m) * 30}px)`, textAlign: 'center' }}>{data.farah.text}</div>
+      </div>
+      <div style={{ fontFamily: MONO, fontSize: 20, color: C.muted, opacity: m }}>Arabic → English</div>
+    </Center>
+  )
+}
+const Investigate = ({ t, at }) => {
+  const scan = ramp(t, at + 0.1, at + 1.0, 0, 1, EASE_IO)
+  return (
+    <Center gap={18}>
+      <div style={{ fontFamily: SANS, fontWeight: 700, fontSize: 17, letterSpacing: '.3em', color: C.blueSoft }}>THE DETECTIVE READS THE CLICKS</div>
+      <div style={{ position: 'relative', width: 1180, padding: '26px 34px', borderRadius: 18, background: 'rgba(15,11,9,.55)', border: `1px solid ${C.line}` }}>
+        <div style={{ fontFamily: MONO, fontSize: 26, color: C.muted }}>step 2 · click “Add medicine” ×5 → nothing changed</div>
+        <div style={{ marginTop: 14, fontFamily: SANS, fontWeight: 600, fontSize: 34, color: C.red }}>Found the exact step that broke.</div>
+        <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${scan * 100}%`, width: 3, background: C.blueSoft, boxShadow: '0 0 30px rgba(127,166,255,.9)', opacity: scan < 1 ? 1 : 0 }} />
+      </div>
+    </Center>
+  )
+}
+const Question = ({ t, at }) => {
+  const q = data.hana.follow_up || ''
+  const n = Math.floor(ramp(t, at + 0.2, at + 2.0, 0, q.length, Easing.linear))
+  return (
+    <Center gap={18}>
+      <div style={{ fontFamily: SANS, fontWeight: 700, fontSize: 17, letterSpacing: '.3em', color: C.blueSoft }}>VAGUE REPORT · “IT FELT WEIRD.”</div>
+      <div style={{ maxWidth: 1180, background: C.cream, color: C.ink, borderRadius: '26px 26px 26px 6px', padding: '28px 36px', fontFamily: SERIF, fontSize: 40, lineHeight: 1.3, boxShadow: '0 30px 80px rgba(0,0,0,.5)' }}>
+        {q.slice(0, n)}<span style={{ opacity: n < q.length ? 1 : 0 }}>▍</span>
+      </div>
+      <div style={{ fontFamily: SANS, fontSize: 20, color: C.muted }}>One kind question, sent back to the tester</div>
+    </Center>
+  )
+}
+const STACKED = [
+  { who: 'You', text: '(no comment) · rage clicks' },
+  { who: 'You', text: '“I pressed Add medicine loads of times…”' },
+  { who: 'Dani', text: '“Didn’t work.”' },
+]
+const Stack = ({ t, at }) => {
+  const m = ramp(t, at + 0.25, at + 1.0, 0, 1, EASE_IO)
+  return (
+    <Center>
+      <div style={{ position: 'relative', width: 900, height: 330 }}>
+        {STACKED.map((r, i) => (
+          <div key={i} style={{ position: 'absolute', left: 120, top: 70, width: 660, padding: '22px 30px', borderRadius: 18, background: C.card, color: C.ink, boxShadow: '0 24px 60px rgba(0,0,0,.55)',
+            transform: `translate(${(i - 1) * 300 * (1 - m)}px, ${(i - 1) * 22 * m - (1 - m) * 10}px) rotate(${(i - 1) * 6 * (1 - m)}deg) scale(${1 - (2 - i) * 0.04 * m})`, zIndex: i }}>
+            <div style={{ fontFamily: SANS, fontWeight: 700, fontSize: 16, letterSpacing: '.12em', color: C.mutedInk }}>{r.who.toUpperCase()} · STEP 2</div>
+            <div style={{ fontFamily: SERIF, fontSize: 32 }}>{r.text}</div>
+          </div>
+        ))}
+        <div style={{ position: 'absolute', right: 30, top: 10, fontFamily: SANS, fontWeight: 700, fontSize: 24, color: C.cream, background: C.blue, borderRadius: 999, padding: '10px 20px', opacity: ramp(t, at + 0.9, at + 1.2), zIndex: 5 }}>3 reports → 1 problem</div>
+      </div>
+    </Center>
+  )
+}
+const Write = ({ t, at }) => {
+  const title = data.issue.title
+  const n = Math.floor(ramp(t, at + 0.15, at + 1.05, 0, title.length, Easing.linear))
+  return (
+    <Center gap={20}>
+      <div style={{ display: 'flex', gap: 12 }}>
+        {[data.issue.ticket_key, data.issue.severity, 'Step 2: Other medicines'].map((c, i) => (
+          <span key={i} style={{ fontFamily: SANS, fontWeight: 600, fontSize: 22, padding: '8px 16px', borderRadius: 999, background: i === 1 ? C.redBg : 'rgba(242,235,221,.08)', color: i === 1 ? C.red : C.cream, border: `1px solid ${C.line}` }}>{c}</span>
+        ))}
+      </div>
+      <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 64, color: C.cream, textAlign: 'center', maxWidth: 1300, minHeight: 150 }}>{title.slice(0, n)}<span style={{ opacity: n < title.length ? 1 : 0 }}>▍</span></div>
+    </Center>
+  )
+}
+const CODE = fix.code.split('\n').slice(0, 5)
+const Mechanic = ({ t, at }) => {
+  const hl = ramp(t, word('a3', 'point') - 0.1, word('a3', 'point') + 0.3)
+  const cause = ramp(t, word('a3', 'cause') - 0.1, word('a3', 'cause') + 0.4)
+  return (
+    <div style={{ position: 'absolute', inset: 0, padding: '46px 60px' }}>
+      <div style={{ fontFamily: MONO, fontSize: 18, color: C.muted, marginBottom: 14 }}>{fix.file}</div>
+      <div style={{ background: '#120d0b', borderRadius: 16, border: `1px solid ${C.line}`, padding: '20px 0' }}>
+        {CODE.map((l, i) => {
+          const bad = l.includes('dead_add_medicine')
+          return (
+            <div key={i} style={{ position: 'relative', fontFamily: MONO, fontSize: 25, lineHeight: 1.65, color: bad ? '#ffd9dc' : '#d8cdbb', padding: '0 30px', whiteSpace: 'pre',
+              background: bad ? `rgba(255,143,152,${0.18 * hl})` : 'transparent', boxShadow: bad ? `inset 4px 0 0 rgba(255,143,152,${hl})` : 'none' }}>
+              <span style={{ color: '#6f6152', marginRight: 26 }}>{String(i + 1).padStart(2, ' ')}</span>{l.replace(/^ {0,4}/, '')}
+            </div>
+          )
+        })}
+      </div>
+      <div style={{ marginTop: 22, opacity: cause, transform: `translateY(${(1 - cause) * 12}px)`, display: 'flex', gap: 16, alignItems: 'baseline' }}>
+        <span style={{ fontFamily: SANS, fontWeight: 700, fontSize: 18, letterSpacing: '.2em', color: C.red, whiteSpace: 'nowrap' }}>LIKELY CAUSE</span>
+        <span style={{ fontFamily: SANS, fontSize: 26, color: C.cream }}>{fix.likely_cause}</span>
+      </div>
+    </div>
+  )
+}
+
+const Agents = ({ from }) => {
+  const b = START.a2 - 0.08
+  return (
+    <>
+      <Seq from={from} to={b}>
+        <Screen src={shot('agents')} sweepAt={0.3} cams={[focus(box('agents', 'layer'), 0.95, 1.15), { at: 0.4, dur: 1.8, ...focus(box('agents', 'team'), 0.85, 1.35) }]} />
+      </Seq>
+      <Seq from={b} to={SCENE.agentsEnd}><AgentBoard from={b} /></Seq>
+      <Sfx at={from - 1.06} src="audio/sfx_whoosh.mp3" volume={0.35} dur={1.5} />
+    </>
+  )
+}
+
+// ---------- 5. Montage burst into the silence ----------
+const CUTS = [['testers', 'farah', 0.5, 1.9], ['ticket', 'title', 0.55, 1.9], ['ghost_pass', 'ghost', 0.75, 1.6]]
+const Montage = ({ from }) => (
+  <>
+    {CUTS.map(([s, k, fill, max], i) => {
+      const a = from + i * 0.49923
+      const b = i + 1 < CUTS.length ? a + 0.49923 : MUSIC_BREAK
+      return (
+        <Seq key={i} from={a} to={b}>
+          <Screen src={shot(s)} fadeIn={0} push={0.22} tilt={i % 2 ? [6, 9] : [6, -9]} cams={[focus(box(s, k), fill, max)]} />
+          <Flash at={0} peak={0.16} dur={0.12} />
+        </Seq>
+      )
+    })}
+    {CUTS.map((_, i) => <Sfx key={i} at={from + i * 0.49923 - 1.06} src="audio/sfx_whoosh.mp3" volume={i ? 0.32 : 0.45} dur={1.5} />)}
+  </>
+)
+
+// ---------- 6. The human ----------
+const Human = ({ from }) => {
+  const decide = box('review', 'decide'), over = box('review', 'overrule')
+  const card = { x: 190, y: 30, width: 540, height: 330 }          // title + KUAT's suggestion
+  const counter = { x: 652, y: 40, width: 74, height: 36 }          // "1 of 6"
+  const overX = over.x + over.width + 66, overY = over.y + over.height / 2
+  return (
+    <>
+      <Screen src={shot('review')} fadeIn={0.12} sweepAt={0.15} glow="rgba(242,235,221,.08)"
+        cams={[focus(decide, 0.98, 1.0), { at: 0.9, dur: 2.1, ...focus(decide, 0.86, 1.18) }, { at: START.c2 - from - 0.2, dur: 1.1, ...focus(card, 0.8, 1.9) },
+          { at: word('c3', 'overrule') - from - 0.9, dur: 1.0, ...focus(over, 0.5, 2.1, 130) }]}>
+        <Highlight box={counter} at={word('c2', 'One') - from + 0.2} until={START.c3 - from} radius={10} />
+        <Click x={overX} y={overY} at={word('c3', 'one') - from} />
+        <Highlight box={{ x: over.x - 6, y: over.y - 12, width: over.width + 330, height: over.height + 24 }} at={word('c3', 'overrule') - from} until={SCENE.controlEnd - from} />
+      </Screen>
+      <Flash at={0} peak={0.22} dur={0.4} />
+    </>
+  )
+}
+
+// ---------- 7. The proof ----------
+const JiraCard = ({ at }) => {
+  const t = useT()
+  if (t < at) return null
+  const a = ramp(t, at, at + 0.55)
+  const lines = data.jira.split('\n').filter(Boolean).slice(0, 7)
+  return (
+    <div style={{ position: 'absolute', right: 90, top: 190, width: 760, opacity: a, transform: `translateX(${(1 - a) * 120}px) rotate(${(1 - a) * 4}deg)` }}>
+      <div style={{ background: C.card, borderRadius: 18, padding: '22px 28px', boxShadow: '0 40px 90px rgba(0,0,0,.65)' }}>
+        <div style={{ fontFamily: SANS, fontWeight: 700, fontSize: 16, letterSpacing: '.2em', color: C.blue, marginBottom: 10 }}>COPIED IN JIRA FORMAT</div>
+        {lines.map((l, i) => <div key={i} style={{ fontFamily: MONO, fontSize: 18, lineHeight: 1.55, color: C.ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{l}</div>)}
+      </div>
+    </div>
+  )
+}
+const Crop = ({ src, b, x, y, w, label, tone, at, children }) => {
+  const t = useT()
+  const s = w / b.width
+  const h = b.height * s
+  const a = ramp(t, at, at + 0.45)
+  return (
+    <div style={{ position: 'absolute', left: x, top: y, opacity: a, transform: `translateY(${(1 - a) * 30}px)` }}>
+      <div style={{ fontFamily: SANS, fontWeight: 700, fontSize: 20, letterSpacing: '.22em', color: tone, marginBottom: 14 }}>{label}</div>
+      <div style={{ position: 'relative', width: w, height: h, borderRadius: 18, overflow: 'hidden', boxShadow: `0 40px 100px rgba(0,0,0,.65), 0 0 0 2px ${tone}55` }}>
+        <Img src={staticFile(src)} style={{ position: 'absolute', left: -b.x * s, top: -b.y * s, width: 1440 * s, height: 900 * s }} />
+        {children}
+      </div>
+    </div>
+  )
+}
+const Proof = ({ from }) => {
+  const tk = 'ticket', jiraAt = word('p1', 'Jira')
+  const copy = box(tk, 'copy'), title = box(tk, 'title'), steps = box(tk, 'steps')
+  const b = 73.6, c = 75.62, d = START.p3 - 0.15, e = word('p3', 'fixed') + 0.28
+  const sw = box('deploy_before', 'sw'), btn = box('deploy_before', 'btn')
+  const ghost = box('ghost_pass', 'ghost'), mark = box('ghost_pass', 'mark')
+  const cropW = 800, gs = cropW / ghost.width
+  return (
+    <>
+      <Seq from={from} to={b}>
+        <Screen src={shot(tk)} dim={0.06} sweepAt={0.25} cams={[focus(box(tk, 'drawer'), 0.95, 1.05), { at: 0.6, dur: 1.2, ...focus(title, 0.8, 1.75, 0, 40) },
+          { at: jiraAt - from - 0.55, dur: 0.8, ...focus(copy, 0.3, 2.0, 160) }, { at: word('p1', 'written') - from - 0.2, dur: 1.2, ...focus(steps, 0.55, 1.55, 160, 120) }]}>
+          <Click x={copy.x + copy.width / 2} y={copy.y + copy.height / 2} at={jiraAt - from + 0.1} />
+        </Screen>
+        <JiraCard at={jiraAt - from + 0.35} />
+      </Seq>
+      <Seq from={b} to={c}>
+        <Screen srcs={[[0, shot('deploy_before')], [word('p2', 'fixed') - b + 0.15, shot('deploy_after')]]} fadeIn={0.2} cams={[focus(sw, 0.62, 1.9)]}>
+          <Click x={btn.x + btn.width / 2} y={btn.y + btn.height / 2} at={word('p2', 'fixed') - b} />
+        </Screen>
+      </Seq>
+      <Seq from={c} to={d}>
+        <Screen src={shot('ghost_pass')} dim={0.06} fadeIn={0.2} sweepAt={word('p2', 'replays') - c} glow="rgba(95,211,141,.12)" cams={[focus(ghost, 0.8, 1.4), { at: 0.8, dur: 2.4, ...focus(ghost, 0.66, 1.62) }]}>
+          <Highlight box={ghost} at={word('p2', 'replays') - c} until={d - c} color={C.ok} />
+        </Screen>
+      </Seq>
+      <Seq from={d} to={e}>
+        <AbsoluteFill>
+          <Crop src={shot('ghost_fail')} b={ghost} x={110} y={170} w={cropW} label="OLD BUILD · STILL FAILING" tone={C.red} at={0} />
+          <Crop src={shot('ghost_pass')} b={ghost} x={1010} y={170} w={cropW} label="NEW BUILD · EVERY TRAIL PASSES" tone={C.ok} at={word('p3', 'passes') - d - 0.2}>
+            <Click x={(mark.x - ghost.x + mark.width / 2) * gs} y={(mark.y - ghost.y + mark.height / 2) * gs} at={word('p3', 'fixed') - d} />
+          </Crop>
+        </AbsoluteFill>
+      </Seq>
+      <Seq from={e} to={SCENE.proofEnd}>
+        <Screen src={shot('fixed')} dim={0.06} fadeIn={0.15} sweepAt={0.2} glow="rgba(95,211,141,.18)" cams={[focus(box('fixed', 'banner'), 0.62, 1.7, 0, -40)]} />
+        <Flash at={0} peak={0.18} dur={0.35} />
+      </Seq>
+      <Sfx at={from - 1.06} src="audio/sfx_whoosh.mp3" volume={0.35} dur={1.5} />
+    </>
+  )
+}
+
+// ---------- 8. Close ----------
+const Readiness = ({ from }) => {
+  const t = useT() + from
+  const v = ramp(t, from + 0.3, word('e1', 'climbs') + 0.6, READY[0], READY[1], EASE_IO)
+  const a = ramp(t, from, from + 0.4)
+  return (
+    <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'center', opacity: a }}>
+      <div style={{ fontFamily: SANS, fontWeight: 700, fontSize: 22, letterSpacing: '.4em', color: C.muted }}>LAUNCH READINESS</div>
+      <div style={{ fontFamily: SERIF, fontWeight: 700, fontSize: 260, lineHeight: 1, color: C.cream, marginTop: 10, textShadow: '0 0 80px rgba(95,211,141,.25)' }}>
+        {Math.round(v)}<span style={{ fontSize: 80, color: C.muted }}> / 100</span>
+      </div>
+      <div style={{ position: 'relative', width: 1100, height: 16, borderRadius: 8, background: 'rgba(242,235,221,.1)', marginTop: 34 }}>
+        <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${v}%`, borderRadius: 8, background: `linear-gradient(90deg, ${C.red}, #ecd08e, ${C.ok})`, boxShadow: '0 0 30px rgba(95,211,141,.5)' }} />
+        <div style={{ position: 'absolute', left: `${READY[2]}%`, top: -14, bottom: -14, width: 2, background: C.cream, opacity: 0.6 }} />
+        <div style={{ position: 'absolute', left: `${READY[2]}%`, top: 34, transform: 'translateX(-50%)', fontFamily: MONO, fontSize: 18, color: C.muted, whiteSpace: 'nowrap' }}>launch at {READY[2]}+</div>
+      </div>
+    </AbsoluteFill>
+  )
+}
+const MessyProven = ({ from }) => {
+  const t = useT() + from
+  const left = ramp(t, word('e2', 'Messy') - 0.1, word('e2', 'Messy') + 0.5)
+  const right = ramp(t, word('e2', 'Proven') - 0.1, word('e2', 'Proven') + 0.5)
+  const chips = ['“Didn’t work.”', '“It felt weird.”', data.farah.original_text, '×5 clicks']
+  return (
+    <AbsoluteFill>
+      <div style={{ position: 'absolute', left: 959, top: 260, width: 2, height: 560 * ramp(t, from, from + 0.8), background: 'rgba(242,235,221,.25)' }} />
+      <div style={{ position: 'absolute', left: 130, width: 700, top: 300, opacity: left, filter: `blur(${(1 - left) * 10}px)` }}>
+        <div style={{ fontFamily: SERIF, fontSize: 82, color: C.cream, lineHeight: 1.05 }}>Messy feedback <em>in.</em></div>
+        <div style={{ position: 'relative', height: 260, marginTop: 30 }}>
+          {chips.map((c, i) => (
+            <div key={i} dir={i === 2 ? 'rtl' : 'ltr'} style={{ position: 'absolute', left: [10, 330, 40, 400][i], top: [10, 40, 130, 150][i], transform: `rotate(${[-6, 5, 3, -4][i]}deg)`, fontFamily: i === 2 ? '"Geeza Pro", Arial' : SERIF,
+              fontStyle: i === 2 ? 'normal' : 'italic', fontSize: 30, color: C.ink, background: C.card, borderRadius: 12, padding: '10px 18px', opacity: 0.75, boxShadow: '0 16px 30px rgba(0,0,0,.5)' }}>{c}</div>
+          ))}
+        </div>
+      </div>
+      <div style={{ position: 'absolute', left: 1090, width: 700, top: 300, opacity: right, filter: `blur(${(1 - right) * 10}px)` }}>
+        <div style={{ fontFamily: SERIF, fontSize: 82, color: C.cream, lineHeight: 1.05 }}>Proven fixes <em>out.</em></div>
+        <div style={{ marginTop: 40, display: 'inline-flex', alignItems: 'center', gap: 18, background: C.greenBg, border: `1px solid ${C.ok}`, borderRadius: 18, padding: '20px 28px', boxShadow: '0 0 60px rgba(95,211,141,.2)' }}>
+          <span style={{ width: 44, height: 44, borderRadius: '50%', background: C.ok, color: C.greenBg, display: 'grid', placeItems: 'center', fontFamily: SANS, fontWeight: 800, fontSize: 28 }}>✓</span>
+          <span style={{ fontFamily: SANS, fontWeight: 600, fontSize: 30, color: C.green }}>{data.issue.ticket_key} · Fixed, proven by the Ghost</span>
+        </div>
+      </div>
+    </AbsoluteFill>
+  )
+}
+const Close = ({ from }) => {
+  const b = word('e1', 'tester') - 0.35, c = beat(88.52)
+  const rep = box('tester_fixed', 'report')
+  return (
+    <>
+      <Seq from={from} to={b}><Readiness from={from} /></Seq>
+      <Seq from={b} to={c}>
+        <Screen src={shot('tester_fixed')} dim={0.1} fadeIn={0.25} sweepAt={0.4} cams={[focus(box('tester_fixed', 'panel'), 0.9, 1.3), { at: 0.3, dur: 1.2, ...focus(rep, 0.5, 2.1) }]}>
+          <Highlight box={rep} at={0.9} until={c - b} color={C.ok} />
+        </Screen>
+      </Seq>
+      <Seq from={c} to={SCENE.closeEnd}><MessyProven from={c} /></Seq>
+      <Sfx at={from - 1.06} src="audio/sfx_whoosh.mp3" volume={0.3} dur={1.5} />
+    </>
+  )
+}
+const beat = (t) => Math.round((t - 0.0234) / 0.49923) * 0.49923 + 0.0234
+
+// ---------- 9. The eat ----------
+const EAT_FROM = 1.4, BITE = 3.85
+const Eat = ({ from }) => (
+  <>
+    <Screen video="clips/eat_slow.mp4" videoFrom={EAT_FROM} tilt={[3, -4]} fadeIn={0.35} fadeOut={0.45} length={SCENE.eatEnd - from} push={0.012} cams={[{ cx: 720, cy: 470, s: 1.03 }]} />
+    <Sfx at={BITE - EAT_FROM - 0.28} src="audio/sfx_crunch.mp3" volume={1} dur={1.2} />
+    <Sequence from={f(BITE - EAT_FROM - 0.2)} durationInFrames={f(1.6)} layout="none">
+      <Audio src={staticFile('audio/sfx_cookies.mp3')} startFrom={f(2.3)} volume={(fr) => 0.85 * interpolate(fr, [0, f(1.0), f(1.6)], [1, 1, 0], { extrapolateRight: 'clamp' })} />
+    </Sequence>
+  </>
+)
+
+// ---------- 10. End card ----------
+const EndCard = ({ from }) => {
+  const t = useT() + from
+  const sweep = ramp(t, from + 0.5, from + 1.9, -0.3, 1.3, EASE_IO)
+  const tag = ramp(t, word('e3', 'Developers') - 0.1, word('e3', 'Developers') + 0.5)
+  const by = ramp(t, lineEnd('e3') + 0.2, lineEnd('e3') + 0.9)
+  const out = ramp(t, END - 1.5, END - 0.2, 1, 0)
+  return (
+    <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'center', opacity: out }}>
+      <Spring at={0} from={0.7}><Knight size={130} /></Spring>
+      <div style={{ marginTop: 28, fontFamily: SERIF, fontWeight: 700, fontSize: 190, lineHeight: 1, color: 'transparent', opacity: ramp(t, from, from + 0.3),
+        backgroundImage: `linear-gradient(100deg, ${C.cream} ${sweep * 100 - 18}%, #fffaf0 ${sweep * 100}%, ${C.cream} ${sweep * 100 + 18}%)`, WebkitBackgroundClip: 'text', backgroundClip: 'text' }}>KUAT.</div>
+      <div style={{ marginTop: 18, fontFamily: SERIF, fontStyle: 'italic', fontSize: 58, color: C.cream, opacity: tag, transform: `translateY(${(1 - tag) * 14}px)` }}>Developers’ favourite Oreo.</div>
+      <div style={{ marginTop: 46, fontFamily: SANS, fontWeight: 500, fontSize: 22, letterSpacing: '.28em', color: C.muted, opacity: by }}>KNIGHT UAT · BUILT BY FARIS SALKAWI</div>
+    </AbsoluteFill>
+  )
+}
+
+// ---------- The film ----------
+// --props='{"noVoice":true}' renders the music and effects only, for Faris to record his own voice over.
+export const Film = () => {
+  const { noVoice } = getInputProps()
+  return (
+  <AbsoluteFill style={{ background: '#000' }}>
+    <Backdrop />
+    <Seq from={0} to={SCENE.hookEnd}><Hook /></Seq>
+    <BigText k="r1" size={124} italic until={IMPACT - 0.02} />
+    <Title />
+    <Seq from={SCENE.revealEnd} to={SCENE.oreoEnd}><Oreo from={SCENE.revealEnd} /></Seq>
+    <Testers from={SCENE.oreoEnd} />
+    <Agents from={SCENE.testersEnd} />
+    <Montage from={SCENE.agentsEnd} />
+    <Seq from={MUSIC_BACK} to={SCENE.controlEnd}><Human from={MUSIC_BACK} /></Seq>
+    <Proof from={SCENE.controlEnd} />
+    <Close from={SCENE.proofEnd} />
+    <Seq from={SCENE.closeEnd} to={SCENE.eatEnd}><Eat from={SCENE.closeEnd} /></Seq>
+    <Seq from={SCENE.eatEnd} to={END}><EndCard from={SCENE.eatEnd} /></Seq>
+
+    <SectionLabel n="01" text="THE TESTERS" from={SCENE.oreoEnd} to={SCENE.testersEnd} />
+    <SectionLabel n="02" text="THE AGENTS" from={SCENE.testersEnd} to={SCENE.agentsEnd} />
+    <SectionLabel n="03" text="THE HUMAN" from={MUSIC_BACK} to={SCENE.controlEnd} />
+    <SectionLabel n="04" text="THE PROOF" from={SCENE.controlEnd} to={SCENE.proofEnd} />
+
+    <Flash at={IMPACT} peak={0.42} dur={0.45} />
+    <Seq from={MUSIC_BREAK} to={MUSIC_BACK}><AbsoluteFill style={{ background: '#000' }} /></Seq>
+    <Vignette />
+    <Grain />
+    <Letterbox openAt={IMPACT} />
+    <Captions skip={['h1', 'h2', 'r1', 'r2', 'e2', 'e3']} />
+
+    <Audio src={staticFile('audio/music_epical02.mp3')} volume={(fr) => musicVolume(fr / FPS)} />
+    {!noVoice && Object.keys(START).map((k) => (
+      <Sequence key={k} from={f(START[k])} durationInFrames={f(LINES[k].duration + 0.6)} layout="none"><Audio src={staticFile(LINES[k].file)} volume={1} /></Sequence>
+    ))}
+    <Sfx at={0.25} src="audio/sfx_heartbeat.mp3" volume={0.85} dur={3.5} />
+    {/* The hit's build-up is trimmed so it starts after "Not anymore." ends; the boom still lands on the cut. */}
+    <Sequence from={f(IMPACT - 0.98 + 0.55)} durationInFrames={f(4.3)} layout="none">
+      <Audio src={staticFile('audio/sfx_impact.mp3')} startFrom={f(0.55)} volume={(fr) => 0.95 * interpolate(fr, [0, 4], [0, 1], { extrapolateRight: 'clamp' })} />
+    </Sequence>
+    <Sfx at={SCENE.revealEnd - 0.6} src="audio/sfx_riser.mp3" volume={0.4} dur={6.7} />
+    <Sequence from={f(SCENE.eatEnd - 0.82)} durationInFrames={f(5)} layout="none"><Audio src={staticFile('audio/sfx_logo.mp3')} startFrom={f(3.5)} volume={0.85} /></Sequence>
+  </AbsoluteFill>
+  )
+}

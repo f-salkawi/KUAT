@@ -25,7 +25,7 @@ export default function TesterReports({ steps, onOpen, onDemo, busy }) {
           <b style={{ font: '500 20px var(--display)' }}>Start the test cycle</b>
           <ol>
             <li>Open the test site and report a side effect, the way a nurse tester would.</li>
-            <li>When something feels wrong, press the knight in the corner and say so, in any language.</li>
+            <li>When something feels wrong, press the KUAT button in the corner and say so, in any language.</li>
             <li>Watch the agents work in the cream, then decide at the bottom.</li>
           </ol>
         </div>

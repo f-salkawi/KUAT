@@ -1,0 +1,23 @@
+{
+  "name": "kuat-film",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "still": "remotion still src/index.jsx KUAT",
+    "render": "remotion render src/index.jsx KUAT out/kuat.mp4"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@remotion/cli": "^4.0.541",
+    "@remotion/google-fonts": "^4.0.541",
+    "@remotion/media-utils": "^4.0.541",
+    "playwright-core": "^1.55.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "remotion": "^4.0.541"
+  },
+  "private": true
+}

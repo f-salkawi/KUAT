@@ -13,7 +13,7 @@ function useHash() {
   return hash
 }
 
-// Two places: #/test is the app being tested (with the knight button), everything else is the KUAT cookie.
+// Two places: #/test is the app being tested (with the KUAT button), everything else is the KUAT cookie.
 export default function App() {
   const hash = useHash()
   const [steps, setSteps] = useState([])

@@ -26,7 +26,7 @@ def _rules(f: dict) -> dict:
     s, r = f["summary"], f["summary"]["readiness"]
     if not f["reports"]:
         return {"headline": "No feedback yet this cycle", "points": ["Nobody has sent a report so far."],
-                "next_step": "Ask testers to work through the script and use the knight button."}
+                "next_step": "Ask testers to work through the script and use the KUAT button."}
     points = [f"{f['reports']} report{'s' if f['reports'] != 1 else ''} from {f['testers']} tester{'s' if f['testers'] != 1 else ''}, "
               f"grouped into {s['counts']['to_fix'] + s['counts']['waiting']} open problem(s) and {s['counts']['ideas']} idea(s)."]
     if f["hottest"]["heat"]:

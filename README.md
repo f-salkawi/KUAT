@@ -1,4 +1,4 @@
-# KUAT ♞ Knight UAT
+# KUAT ♞ UAT, untangled
 
 **Feedback, untangled.** KUAT makes user acceptance testing (UAT) feedback easy to give and easy to act on. Testers report problems in their own words, a team of AI agents sorts and investigates them, a human approves every bug one at a time, and developers get tickets that come with proof.
 
@@ -10,7 +10,7 @@ Think of a sandwich cookie with three layers:
 
 | Layer | Who | What KUAT does for them |
 |---|---|---|
-| Top biscuit | **Tester** | Press the knight on the test site, pick *Report a problem* or *Share an idea*, write anything in any language. KUAT attaches their clicks automatically, and a tracker shows where the report is now: sent, checked, decided, fixed. |
+| Top biscuit | **Tester** | Press the KUAT button on the test site, pick *Report a problem* or *Share an idea*, write anything in any language. KUAT attaches their clicks automatically, and a tracker shows where the report is now: sent, checked, decided, fixed. |
 | Cream | **AI agent team** | Translate, investigate the click trail, spot duplicates, write the ticket, suggest a fix. Every suggestion shows its confidence, its reasons and the evidence. |
 | Bottom biscuit | **Manager and developer** | The manager approves each bug, one at a time, or overrules the AI in one click. The developer gets steps to reproduce, a Replay of the tester's session, a suggested fix and a Ghost tester that proves the fix works. |
 
@@ -61,7 +61,7 @@ KUAT is shown on **Northwind Pharma SafeReport**, a made-up internal tool where 
 
 "Deploying a fix" on the dashboard switches a flag off, which runs the corrected code in `frontend/src/demo/reportEngine.js`.
 
-- `#/test` is the test site, with the KUAT knight button in the corner for testers.
+- `#/test` is the test site, with the KUAT button in the corner for testers.
 - `#/` is the KUAT dashboard: a cookie you twist open (or press Enter on it). Testers on the top biscuit, the agent team in the cream, the manager and developer on the bottom biscuit. Click any tester's card to follow their report to its ticket. Drag the closed cookie down to eat it.
 - The cookie only animates movement and opacity, sampled from smooth curves, so it runs at a steady 60 frames a second, and it respects the system's "reduce motion" setting.
 - *Load demo testers* runs nine testers' reports (including one in Arabic and one silent rage-click report) through the real agent pipeline.

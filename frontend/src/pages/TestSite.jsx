@@ -5,7 +5,7 @@ import { useReport } from '../demo/useReport.js'
 import Panel from '../kuat/Panel.jsx'
 import { createRecorder } from '../kuat/recorder.js'
 
-// The app being tested (Northwind Pharma's form) with the KUAT layer on top: the knight button,
+// The app being tested (Northwind Pharma's form) with the KUAT layer on top: the KUAT button,
 // the feedback panel, the current script step and the rage-click detector.
 export default function TestSite({ steps, flags }) {
   const [tester, setTester] = useState(() => {
@@ -39,7 +39,7 @@ export default function TestSite({ steps, flags }) {
   const { state, act, change } = useReport({ flags, recorder, steps, onPass })
   const step = steps.find((s) => s.id === state.step)
 
-  useEffect(() => { document.title = 'SafeReport · Northwind Pharma (UAT)'; return () => { document.title = 'KUAT · Knight UAT' } }, [])
+  useEffect(() => { document.title = 'SafeReport · Northwind Pharma (UAT)'; return () => { document.title = 'KUAT · UAT, untangled' } }, [])
   useEffect(() => { try { localStorage.setItem('kuat-tester', tester) } catch { /* private mode */ } }, [tester])
   useEffect(() => { if (!rage) return undefined; const id = setTimeout(() => setRage(null), 9000); return () => clearTimeout(id) }, [rage])
 

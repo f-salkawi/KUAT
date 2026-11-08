@@ -13,7 +13,7 @@ export default function ReportSite({ state, act, change, highlight }) {
 
   return (
     <div className="site">
-      <div className="uat-banner">UAT test build. Bugs are expected here: use the knight button to tell the team.</div>
+      <div className="uat-banner">UAT test build. Bugs are expected here: use the KUAT button to tell the team.</div>
       <header>
         <div className="site-bar">
           <div className="logo" aria-hidden="true"><i className="fa-solid fa-capsules" /></div>
